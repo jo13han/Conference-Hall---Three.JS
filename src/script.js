@@ -18,6 +18,33 @@ scene.background = new THREE.Color(0xf0f0f0)
 const gltfLoader = new GLTFLoader()
 const textureLoader = new THREE.TextureLoader()
 
+// Common textures
+const seatTexture = textureLoader.load('./textures/AcousticFoam001.png')
+if (seatTexture.colorSpace !== undefined) {
+    seatTexture.colorSpace = THREE.SRGBColorSpace
+}
+
+/**
+ * Shadow helpers
+ */
+function setShadowProps(object, options = {}) {
+    if (!object) return
+    const { cast = true, receive = true } = options
+
+    const apply = (mesh) => {
+        if (mesh.isMesh) {
+            mesh.castShadow = cast
+            mesh.receiveShadow = receive
+        }
+    }
+
+    if (object.traverse) {
+        object.traverse(apply)
+    } else {
+        apply(object)
+    }
+}
+
 /**
  * Helper Functions
  */
@@ -48,6 +75,7 @@ function createTable() {
             tableModel.position.set(0, 0, 0)
             tableModel.scale.set(0.7, 0.5, 1) // Smaller on X and Y axes
             
+            setShadowProps(tableModel)
             scene.add(tableModel)
             console.log('GLB table with texture loaded successfully')
         },
@@ -86,8 +114,11 @@ function createWhiteboard() {
                         metalness: 0.1
                     })
                     child.material = texturedMaterial
+                    child.castShadow = true
+                    child.receiveShadow = true
                 }
             })
+            setShadowProps(whiteboardModel)
             
             // Calculate bounding box to determine size
             const box = new THREE.Box3().setFromObject(whiteboardModel)
@@ -156,6 +187,7 @@ function createWhiteboard() {
             )
             // Rotate 90 degrees to face into the room
             leftPanel.rotation.y = Math.PI * 0.5
+            setShadowProps(leftPanel)
             scene.add(leftPanel)
             
             // Right panel - positioned on the right section of the frame
@@ -170,6 +202,7 @@ function createWhiteboard() {
             )
             // Rotate 90 degrees to face into the room
             rightPanel.rotation.y = Math.PI * 0.5
+            setShadowProps(rightPanel)
             scene.add(rightPanel)
             
             scene.add(whiteboardModel)
@@ -225,8 +258,11 @@ function createTV() {
                         metalness: 0.1
                     })
                     child.material = texturedMaterial
+                    child.castShadow = true
+                    child.receiveShadow = true
                 }
             })
+            setShadowProps(tvModel)
             
             // Position on left wall (inner surface) - same wall as whiteboard
             const floorWidth = 20
@@ -315,7 +351,7 @@ function createFloor() {
     const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial)
     floorMesh.rotation.x = -Math.PI * 0.5
     floorMesh.position.y = -0.01 // Slightly below to avoid z-fighting
-    floorMesh.receiveShadow = true
+    setShadowProps(floorMesh, { cast: false, receive: true })
     scene.add(floorMesh)
 
     // Build simple walls around the floor
@@ -414,13 +450,13 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
     // Left wall (x = -width/2) - concrete
     const leftWall = makeWall(wallThickness, wallHeight, floorDepth, wallMaterial)
     leftWall.position.set(-floorWidth * 0.5 - wallThickness * 0.5, wallHeight * 0.5, 0)
-    leftWall.receiveShadow = true
+    setShadowProps(leftWall)
     scene.add(leftWall)
 
     // Right wall (x = +width/2) - concrete
     const rightWall = makeWall(wallThickness, wallHeight, floorDepth, wallMaterial)
     rightWall.position.set(floorWidth * 0.5 + wallThickness * 0.5, wallHeight * 0.5, 0)
-    rightWall.receiveShadow = true
+    setShadowProps(rightWall)
     scene.add(rightWall)
 
     // Back wall (far length side, z = -depth/2) as glass pane
@@ -440,23 +476,28 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
     // Baseboards along all four inner edges, slightly inside room
     const baseFront = makeBaseboard(floorWidth, true)
     baseFront.position.set(0, baseboardHeight * 0.5, floorDepth * 0.5 - baseboardOffset)
+    setShadowProps(baseFront)
     scene.add(baseFront)
 
     const baseBack = makeBaseboard(floorWidth, true)
     baseBack.position.set(0, baseboardHeight * 0.5, -floorDepth * 0.5 + baseboardOffset)
+    setShadowProps(baseBack)
     scene.add(baseBack)
 
     const baseLeft = makeBaseboard(floorDepth, false)
     baseLeft.position.set(-floorWidth * 0.5 + baseboardOffset, baseboardHeight * 0.5, 0)
+    setShadowProps(baseLeft)
     scene.add(baseLeft)
 
     const baseRight = makeBaseboard(floorDepth, false)
     baseRight.position.set(floorWidth * 0.5 - baseboardOffset, baseboardHeight * 0.5, 0)
+    setShadowProps(baseRight)
     scene.add(baseRight)
 
     // Top baseboard on glass wall (back wall) - horizontal strip at top
     const topBaseboard = makeBaseboard(floorWidth, true)
     topBaseboard.position.set(0, wallHeight - baseboardHeight * 0.5, -floorDepth * 0.5 - wallThickness * 0.5 - baseboardOffset)
+    setShadowProps(topBaseboard)
     scene.add(topBaseboard)
 
     // Corner columns at back-left and back-right corners (glass side) — square, protruding inward
@@ -469,8 +510,7 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
     const colBLX = -floorWidth * 0.5 + columnSize * 0.5 + 0.05
     const colBLZ = -floorDepth * 0.5 + columnSize * 0.5 + 0.05
     colBL.position.set(colBLX, wallHeight * 0.5, colBLZ)
-    colBL.castShadow = true
-    colBL.receiveShadow = true
+    setShadowProps(colBL)
     scene.add(colBL)
     columns.push(colBL) // Add to columns array for collision detection
 
@@ -478,8 +518,7 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
     const colBRX = floorWidth * 0.5 - columnSize * 0.5 - 0.05
     const colBRZ = -floorDepth * 0.5 + columnSize * 0.5 + 0.05
     colBR.position.set(colBRX, wallHeight * 0.5, colBRZ)
-    colBR.castShadow = true
-    colBR.receiveShadow = true
+    setShadowProps(colBR)
     scene.add(colBR)
     columns.push(colBR) // Add to columns array for collision detection
 
@@ -502,21 +541,25 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
     // Left side of left column
     const blSideL = makeBaseboard(columnSize + baseboardThickness, false)
     blSideL.position.set(blLeftX, baseboardHeight * 0.5, colBLZ)
+    setShadowProps(blSideL)
     scene.add(blSideL)
 
     // Front of left column
     const blFront = makeBaseboard(columnSize + baseboardThickness, true)
     blFront.position.set(colBLX, baseboardHeight * 0.5, blFrontZ)
+    setShadowProps(blFront)
     scene.add(blFront)
 
     // Right side of left column
     const blSideR = makeBaseboard(columnSize + baseboardThickness, false)
     blSideR.position.set(blRightX, baseboardHeight * 0.5, colBLZ)
+    setShadowProps(blSideR)
     scene.add(blSideR)
 
     // Back of left column (connects to wall baseboard)
     const blBack = makeBaseboard(columnSize + baseboardThickness, true)
     blBack.position.set(colBLX, baseboardHeight * 0.5, blBackZ)
+    setShadowProps(blBack)
     scene.add(blBack)
 
     // Right column (BR) - create 4 segments: left side, front, right side, back
@@ -528,21 +571,25 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
     // Left side of right column
     const brSideL = makeBaseboard(columnSize + baseboardThickness, false)
     brSideL.position.set(brLeftX, baseboardHeight * 0.5, colBRZ)
+    setShadowProps(brSideL)
     scene.add(brSideL)
 
     // Front of right column
     const brFront = makeBaseboard(columnSize + baseboardThickness, true)
     brFront.position.set(colBRX, baseboardHeight * 0.5, brFrontZ)
+    setShadowProps(brFront)
     scene.add(brFront)
 
     // Right side of right column
     const brSideR = makeBaseboard(columnSize + baseboardThickness, false)
     brSideR.position.set(brRightX, baseboardHeight * 0.5, colBRZ)
+    setShadowProps(brSideR)
     scene.add(brSideR)
 
     // Back of right column (connects to wall baseboard)
     const brBack = makeBaseboard(columnSize + baseboardThickness, true)
     brBack.position.set(colBRX, baseboardHeight * 0.5, brBackZ)
+    setShadowProps(brBack)
     scene.add(brBack)
 
     // Create ceiling
@@ -550,7 +597,7 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
     const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial)
     ceiling.rotation.x = -Math.PI / 2 // Rotate to be horizontal
     ceiling.position.set(0, wallHeight, 0)
-    ceiling.receiveShadow = true
+    setShadowProps(ceiling, { cast: false, receive: true })
     scene.add(ceiling)
 
     // Create 4 recessed ceiling lights
@@ -577,13 +624,15 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
         scene.add(lightFixture)
 
         // Add bright white point light above each fixture
-        const pointLight = new THREE.PointLight(0xffffff, 15, 40, 1.5)
+        const pointLight = new THREE.PointLight(0xffffff, 14, 38, 1.7)
         pointLight.position.set(pos.x, wallHeight - 0.1, pos.z)
         pointLight.castShadow = true
-        pointLight.shadow.mapSize.width = 1024
-        pointLight.shadow.mapSize.height = 1024
+        pointLight.shadow.mapSize.width = 768
+        pointLight.shadow.mapSize.height = 768
         pointLight.shadow.camera.near = 0.1
         pointLight.shadow.camera.far = 40
+        pointLight.shadow.bias = -0.002
+        pointLight.shadow.radius = 4
         scene.add(pointLight)
         pointLights.push(pointLight) // Store for dynamic control
     })
@@ -615,6 +664,8 @@ function createWalls(floorWidth, floorDepth, wallHeight) {
                 const fan = fanModel.clone()
                 fan.position.set(pos.x, wallHeight - 1.2, pos.z)
                 fan.scale.setScalar(1) // Bigger fan
+                setShadowProps(fan)
+                ceilingFans.push(fan)
                 scene.add(fan)
                 
                 // Store fan reference for rotation animation
@@ -662,7 +713,6 @@ function duplicateChairs(originalChair, scale) {
                                        (child.position.y > 0 && child.position.y < 1)
                 
                 if (isSeatOrBackrest) {
-                    const seatTexture = textureLoader.load('./textures/AcousticFoam001.png')
                     const texturedMaterial = new THREE.MeshLambertMaterial({
                         map: seatTexture,
                         color: 0x555555,
@@ -672,9 +722,12 @@ function duplicateChairs(originalChair, scale) {
                 } else {
                     child.material.color.setHex(0x333333)
                 }
+                child.castShadow = true
+                child.receiveShadow = true
             }
         })
         
+        setShadowProps(clonedChair)
         scene.add(clonedChair)
         console.log(`Created chair ${index + 1} at position:`, pos)
     })
@@ -718,8 +771,6 @@ gltfLoader.load(
         chairModel.position.z = -center.z * scale
         
         // Load textures and apply to seat and backrest
-        const seatTexture = textureLoader.load('./textures/AcousticFoam001.png')
-        
         console.log('Starting texture application...')
         let texturedCount = 0
         
@@ -750,8 +801,11 @@ gltfLoader.load(
                     child.material.color.setHex(0x333333)
                     console.log('Set color to dark grey for mesh:', child.name)
                 }
+                child.castShadow = true
+                child.receiveShadow = true
             }
         })
+        setShadowProps(chairModel)
         
         console.log(`Applied texture to ${texturedCount} meshes`)
         
@@ -810,7 +864,7 @@ window.addEventListener('resize', () =>
 
     // Update renderer
     renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
 })
 
 /**
@@ -836,7 +890,7 @@ controls.update()
 /**
  * WASD Movement Controls
  */
-const moveSpeed = 0.1
+const moveSpeed = 0.18
 const keys = {
     w: false,
     a: false,
@@ -1082,6 +1136,7 @@ scene.add(ambientLight)
 
 // Store point lights for dynamic control
 const pointLights = []
+const ceilingFans = []
 
 /**
  * Renderer
@@ -1090,7 +1145,7 @@ const renderer = new THREE.WebGLRenderer({
     canvas: canvas
 })
 renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
 renderer.shadowMap.enabled = true
 renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
@@ -1110,9 +1165,9 @@ const tick = () =>
     moveCamera()
 
     // Rotate ceiling fans
-    scene.traverse((child) => {
-        if (child.userData && child.userData.rotationSpeed) {
-            child.rotation.y += child.userData.rotationSpeed
+    ceilingFans.forEach((fan) => {
+        if (fan && fan.userData && fan.userData.rotationSpeed) {
+            fan.rotation.y += fan.userData.rotationSpeed
         }
     })
 
